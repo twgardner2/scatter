@@ -10,7 +10,6 @@
       opacity: 1;
       stroke: black;
       stroke-width: 1.5;
-      
     }
 
     .notHoveredOver {
@@ -20,165 +19,197 @@
     div.tooltip {
       position: absolute;
       text-align: center;
-      font: 10px san-serif;
-      width: 80px;      
+      font: 8px 'system-ui';
+      width: 70px;      
       height: 20px;
       padding: 2px;
       border: 1.5px solid black;
       border-radius: 8px;
       background: rgb(219, 219, 219);
-      opacity: 1.0;
-      
+            
     }
 
   </style>
 
   </head>
   <body>
-    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <!-- <script src="https://d3js.org/d3.v4.min.js"></script> -->
+    <script src="d3.js"></script>
     <script>
-        // Build svg and canvas
-        var svgWidth = 400,
-            svgHeight = 300,
-            margin = {top:30, right:50, bottom:30, left:50},
-            width = svgWidth - margin.left - margin.right,
-            height = svgHeight - margin.top - margin.bottom;
-        
-        var svg = d3.select("body")
-                    .append("svg")
-                    .attr("width", svgWidth)
-                    .attr("height", svgHeight);
+      // Define variables
+      var opacityTransition = 250;
 
-        var canvas = svg.append("g")
-                        .attr("width", width)
-                        .attr("height", height)
-                        .attr("transform", "translate("+margin.left+","+margin.top+")");
-        
-        // Parse csv data file
-        d3.csv("NapoliBallersHistory.csv", rowConv, dataViz);
-        
+      // Build svg and canvas
+      var svgWidth = 400,
+          svgHeight = 300,
+          margin = {top:30, right:50, bottom:30, left:50},
+          width = svgWidth - margin.left - margin.right,
+          height = svgHeight - margin.top - margin.bottom;
+      
+      var svg = d3.select("body")
+                  .append("svg")
+                  .attr("width", svgWidth)
+                  .attr("height", svgHeight);
 
-        function rowConv(d, i, columns) {
-          for (key in columns) {
-            if(columns[key] != "owner") {
-              d[columns[key]] = +d[columns[key]];
-            }
+      var canvas = svg.append("g")
+                      .attr("width", width)
+                      .attr("height", height)
+                      .attr("transform", "translate("+margin.left+","+margin.top+")");
+        
+      // Parse csv data file
+      d3.csv("NapoliBallersHistory.csv", rowConv, dataViz);
+      
+
+      function rowConv(d, i, columns) {
+        for (key in columns) {
+          if(columns[key] != "owner") {
+            d[columns[key]] = +d[columns[key]];
           }
-          return d;
+        }
+        return d;
+      }
+
+      function dataViz(error, data) {
+        console.log(data);
+        
+        if(error) {throw error;}
+
+        // Calculate average pf for each year
+        var years = data.map(d => d.year);
+        var uniqueYears = [...new Set(years)];
+
+        var pfAvgByYear = {};
+        var annualAvgArray = [];
+        for (i in uniqueYears) {
+          var annualAvg = 0;
+          for(j = 0, count = 0; j < data.length; j++) {
+            if(data[j].year === uniqueYears[i]) {
+              annualAvg += data[j].pf;
+              count++;
+              }
+          }
+          annualAvg /= count;
+          annualAvgArray.push(annualAvg);
         }
 
-        function dataViz(error, data) {
-          if(error) {throw error;}
+        for (i in uniqueYears) {
+          pfAvgByYear[uniqueYears[i]] = annualAvgArray[i];
+        }
+        
+        // Add league average pf to data
+        for (i = 0; i < data.length; i++) {
+          var y = data[i].year;
+          data[i].pfAvg = pfAvgByYear[y];
+          data[i].pfDelta = 100* (data[i].pf - data[i].pfAvg)/data[i].pfAvg;
+        }
 
-          // Calculate average pf for each year
-          var years = data.map(d => d.year);
-          var uniqueYears = [...new Set(years)];
 
-          var pfAvgByYear = {};
-          var annualAvgArray = [];
-          for (i in uniqueYears) {
-            var annualAvg = 0;
-            for(j = 0, count = 0; j < data.length; j++) {
-              if(data[j].year === uniqueYears[i]) {
-                annualAvg += data[j].pf;
-                count++;
-                }
-            }
-            annualAvg /= count;
-            annualAvgArray.push(annualAvg);
-          }
+        // Define scales
+        var ext = d3.extent(data, d => d.rank);
+        var xRange = [];
+        for(i = ext[0]; i <= ext[1]; i++) {
+          xRange.push(i);
+        }
 
-          for (i in uniqueYears) {
-            pfAvgByYear[uniqueYears[i]] = annualAvgArray[i];
-          }
+        var xScale = d3.scalePoint()
+                        .range([0,width])
+                        .domain(xRange);
+
+        var yScale = d3.scaleLinear()
+                        .range([height, 0])
+                        .domain(d3.extent(data, d => d.pf))
+                        //.domain([0, d3.max(data, d => d.pf)]);
+                        //.domain(d3.extent(data, d => d.pfDelta));
+        
+        var colorScale = d3.scaleOrdinal()
+                            .range(d3.schemeCategory20)
+                            .domain(uniqueYears);
+
+        // Create Axes
+        var yAxis = d3.axisLeft().scale(yScale);
+        var xAxis = d3.axisBottom().scale(xScale);
+
+        // Create visualization
+        /// Scatterplot
+        canvas.selectAll("circle").data(data)
+              .enter()
+              .append("circle")
+              .attr("opacity", 0.35)
+              .attr("r", 5)
+              .attr("fill", d => colorScale(d.year))
+              .attr("cx", d => xScale(d.rank))
+              .attr("cy", d => yScale(d.pf))
+              //.attr("cy", d => yScale(d.pfDelta))
+              .on("mouseover", mouseover)
+              .on("mouseout", mouseout);
+
+        /// Tooltip div
+        var div = d3.select("body")
+                    .append("div")
+                    .attr("class", "tooltip")
+                    .style("opacity", 0.0);
+                    //.style("display", "none");
+        
+        /// Axes
+        canvas.append("g")
+        .attr("id", "gYAxis")
+        .call(yAxis);
+
+        canvas.append("g")
+              .attr("id", "gXAxis")
+              .attr("transform", "translate(0,"+height+")")
+              .call(xAxis);
+
+        // Define functions
+        function mouseover(d) {
+          var hoveredYear = d.year;
+          d3.selectAll("circle")
+            .filter(p => p.year == hoveredYear)
+            .classed("hoveredOver", true);
+            //.parentNode.appendChild(this);
           
-          // Add league average pf to data
-          for (i = 0; i < data.length; i++) {
-            var y = data[i].year;
-            data[i].pfAvg = pfAvgByYear[y];
-            data[i].pfDelta = 100* (data[i].pf - data[i].pfAvg)/data[i].pfAvg;
-          }
-
-
-          // Define scales
-          var ext = d3.extent(data, d => d.rank);
-          var xRange = [];
-          for(i = ext[0]; i <= ext[1]; i++) {
-            xRange.push(i);
-          }
-
-          var xScale = d3.scalePoint()
-                         .range([0,width])
-                         .domain(xRange);
-
-          var yScale = d3.scaleLinear()
-                         .range([height, 0])
-                         //.domain([0, d3.max(data, d => d.pf)]);
-                         .domain(d3.extent(data, d => d.pfDelta));
+          div.html(d.owner + "<br/>" + d.year + ": " + d.pf + " points")
+              .style("left", (d3.event.pageX) + 5 + "px")
+              .style("top", (d3.event.pageY) + 5 + "px")
+              //.attr("opacity", 0.1)
+              
+              .transition()
+              .duration(opacityTransition)
+              
+              .style("opacity", 1);
           
+          var x = d3.extent(data, q => q.rank),
+              x1 = xScale(x[0]),
+              x2 = xScale(x[1]),
+              y1 = yScale(d.pfAvg),
+              y2 = y1;
+          //console.log(x1, y1, x2, y2);
 
-
-
-          var colorScale = d3.scaleOrdinal()
-                             .range(d3.schemeCategory20)
-                             .domain(uniqueYears);
-
-          // Create Axes
-          var yAxis = d3.axisLeft().scale(yScale);
-          var xAxis = d3.axisBottom().scale(xScale);
-
-          // Create visualization
-          /// Scatterplot
-          canvas.selectAll("circle").data(data)
-                .enter()
-                .append("circle")
-                .attr("opacity", 0.35)
-                .attr("r", 5)
-                .attr("fill", d => colorScale(d.year))
-                .attr("cx", d => xScale(d.rank))
-                .attr("cy", d => yScale(d.pfDelta))
-                .on("mouseover", mouseover)
-                .on("mouseout", mouseout);
-
-          /// Tooltip div
-          var div = d3.select("body")
-                      .append("div")
-                      .attr("class", "tooltip")
-                      .attr("opacity", 0)
-                      .style("display", "none");
-          
-          /// Axes
-          canvas.append("g")
-          .attr("id", "gYAxis")
-          .call(yAxis);
-
-          canvas.append("g")
-                .attr("id", "gXAxis")
-                .attr("transform", "translate(0,"+height+")")
-                .call(xAxis);
-
-          // Define functions
-          function mouseover(d) {
-            var hoveredYear = d.year;
-            d3.selectAll("circle")
-              .filter(p => p.year == hoveredYear)
-              .classed("hoveredOver", true);
-            
-            div.html(d.owner + "<br/>" + d.year)
-               .style("left", (d3.event.pageX) + 5 + "px")
-               .style("top", (d3.event.pageY) + 5 + "px")
-               .style("display", "inline");
-
-          }
-
-          function mouseout(d) {
-            //var hoveredYear = d.year;
-            d3.selectAll("circle")
-              .classed("hoveredOver", false);
-            div.style("display", "none");
-          }
+          canvas.append("line")
+                .attr("id", "avgLine")
+                .attr("stroke", colorScale(d.year))
+                .attr("x1", x1)
+                .attr("y1", y1)
+                .attr("x2", x2)
+                .attr("y2", y2);
 
         }
+
+        function mouseout(d) {
+          //var hoveredYear = d.year;
+          d3.selectAll("circle")
+            .classed("hoveredOver", false);
+
+          //div.style("display", "none");
+          div.transition()
+            .duration(opacityTransition)
+            .style("opacity", 0.0);
+
+          d3.select("#avgLine")
+            .remove();
+        }
+
+      }
         
     </script>
 
