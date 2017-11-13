@@ -4,43 +4,71 @@
     <meta charset="UTF-8">
     <title>Napoli Ballers Luck Chart</title>
     
-  <style type="text/css">
-   
-    .hoveredOver {
-      opacity: 1;
-      stroke: black;
-      stroke-width: 1.5;
-    }
+    <style type="text/css">
+    
+      .hoveredOver {
+        opacity: 1;
+        stroke: black;
+        stroke-width: 1.5;
+      }
 
-    .notHoveredOver {
-      opacity: 0.35;
-    }
+      .notHoveredOver {
+        opacity: 0.35;
+      }
 
-    div.tooltip {
-      position: absolute;
-      text-align: center;
-      font: 8px 'system-ui';
-      width: 70px;      
-      height: 20px;
-      padding: 2px;
-      border: 1.5px solid black;
-      border-radius: 8px;
-      background: rgb(219, 219, 219);
-            
-    }
+      div.tooltip {
+        position: absolute;
+        text-align: center;
+        font: 8px 'system-ui';
+        width: 70px;      
+        height: 20px;
+        padding: 2px;
+        border: 1.5px solid black;
+        border-radius: 8px;
+        background: rgb(219, 219, 219);
+              
+      }
 
-  </style>
+    </style>
+
+
+    <!-- <script src="https://d3js.org/d3.v4.min.js"></script> -->
+    <script src="script\d3.js"></script>
+    <script src="script\jquery-3.2.1.min.js"></script>
 
   </head>
   <body>
-    <!-- <script src="https://d3js.org/d3.v4.min.js"></script> -->
-    <script src="d3.js"></script>
+    <div id = "radioButtons">
+      <input type="radio" id="totalPoints" name="vizType" value="totalPoints" checked>
+      <label for="totalPoints">Total Points</label>
+
+      <input type="radio" id="percentDevFromMean" name="vizType" value="percentDev">
+      <label for="percentDevFromMean">Percent Deviation from Mean</label>
+
+      <input type="radio" id="rank" name="vizType" value="rank">
+      <label for="rank">Rank</label>
+
+      </br>
+
+      <!-- <button type="submit">Submit</button> -->
+
+    </div>
+
+    <script> // test function for submit button
+     $("#radioButtons").on("click", submit);
+          
+     function submit(event) {
+      updateViz();
+     }
+
+    </script>
+
     <script>
       // Define variables
       var opacityTransition = 250;
 
       // Build svg and canvas
-      var svgWidth = 400,
+      var svgWidth = 600,
           svgHeight = 300,
           margin = {top:30, right:50, bottom:30, left:50},
           width = svgWidth - margin.left - margin.right,
@@ -57,7 +85,9 @@
                       .attr("transform", "translate("+margin.left+","+margin.top+")");
         
       // Parse csv data file
-      d3.csv("NapoliBallersHistory.csv", rowConv, dataViz);
+      function updateViz() {
+        d3.csv("NapoliBallersHistory.csv", rowConv, dataViz);
+      }
       
 
       function rowConv(d, i, columns) {
@@ -69,9 +99,10 @@
         return d;
       }
 
-      function dataViz(error, data) {
-        console.log(data);
-        
+      function dataViz(error, data, plotType) {
+        //console.log(data);
+        var plotType = $("#radioButtons").find("input:checked").val();
+        console.log(plotType);
         if(error) {throw error;}
 
         // Calculate average pf for each year
@@ -137,7 +168,8 @@
               .attr("opacity", 0.35)
               .attr("r", 5)
               .attr("fill", d => colorScale(d.year))
-              .attr("cx", d => xScale(d.rank))
+              .attr("cx", d => d3.randomUniform(0.98, 1.02)() * xScale(d.rank))
+              //.attr("cx", d => xScale(d.rank))
               .attr("cy", d => yScale(d.pf))
               //.attr("cy", d => yScale(d.pfDelta))
               .on("mouseover", mouseover)
@@ -152,8 +184,8 @@
         
         /// Axes
         canvas.append("g")
-        .attr("id", "gYAxis")
-        .call(yAxis);
+              .attr("id", "gYAxis")
+              .call(yAxis);
 
         canvas.append("g")
               .attr("id", "gXAxis")
@@ -188,10 +220,14 @@
           canvas.append("line")
                 .attr("id", "avgLine")
                 .attr("stroke", colorScale(d.year))
+                .attr("opacity", 0)
                 .attr("x1", x1)
                 .attr("y1", y1)
                 .attr("x2", x2)
-                .attr("y2", y2);
+                .attr("y2", y2)
+                .transition()
+                .duration(opacityTransition)
+                .attr("opacity", 1);
 
         }
 
@@ -202,10 +238,16 @@
 
           //div.style("display", "none");
           div.transition()
-            .duration(opacityTransition)
-            .style("opacity", 0.0);
+             .duration(opacityTransition)
+             .style("opacity", 0.0);
 
-          d3.select("#avgLine")
+          div.style("left", 0 + "px")
+             .style("top", svgWidth + 10 + "px");
+
+          d3.selectAll("line")
+            .transition()
+            .duration(opacityTransition)
+            .attr("opacity", 0)
             .remove();
         }
 
@@ -214,6 +256,6 @@
     </script>
 
 
-    <script src="d3.js"></script>
+
   </body>
 </html>
