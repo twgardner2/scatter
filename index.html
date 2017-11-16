@@ -20,8 +20,10 @@
       position: absolute;
       text-align: center;
       font: 8px 'system-ui';
-      width: 70px;      
-      height: 20px;
+      width: 0px;      
+      height: 0px;
+      /* width: 70px;     
+      height: 20px;  */
       padding: 2px;
       border: 1.5px solid black;
       border-radius: 8px;
@@ -34,7 +36,8 @@
   </head>
   <body>
     <!-- <script src="https://d3js.org/d3.v4.min.js"></script> -->
-    <script src="d3.js"></script>
+    <script src="script/d3.js"></script>
+    <script src="script/jquery-3.2.1.min.js"></script>
     <script>
       // Define variables
       var opacityTransition = 250;
@@ -128,8 +131,18 @@
         // Create Axes
         var yAxis = d3.axisLeft().scale(yScale);
         var xAxis = d3.axisBottom().scale(xScale);
+       
+        // Create visualization        
+        /// Axes
+        canvas.append("g")
+        .attr("id", "gYAxis")
+        .call(yAxis);
 
-        // Create visualization
+        canvas.append("g")
+              .attr("id", "gXAxis")
+              .attr("transform", "translate(0,"+height+")")
+              .call(xAxis);
+
         /// Scatterplot
         canvas.selectAll("circle").data(data)
               .enter()
@@ -147,18 +160,10 @@
         var div = d3.select("body")
                     .append("div")
                     .attr("class", "tooltip")
-                    .style("opacity", 0.0);
-                    //.style("display", "none");
+                    .style("width", "70px")
+                    .style("height", "20px")
+                    .style("display", "none");
         
-        /// Axes
-        canvas.append("g")
-        .attr("id", "gYAxis")
-        .call(yAxis);
-
-        canvas.append("g")
-              .attr("id", "gXAxis")
-              .attr("transform", "translate(0,"+height+")")
-              .call(xAxis);
 
         // Define functions
         function mouseover(d) {
@@ -169,13 +174,11 @@
             //.parentNode.appendChild(this);
           
           div.html(d.owner + "<br/>" + d.year + ": " + d.pf + " points")
+              .style("width", "70px")
+              .style("height", "20px")
               .style("left", (d3.event.pageX) + 5 + "px")
               .style("top", (d3.event.pageY) + 5 + "px")
-              //.attr("opacity", 0.1)
-              
-              .transition()
-              .duration(opacityTransition)
-              
+              .style("display", "block")
               .style("opacity", 1);
           
           var x = d3.extent(data, q => q.rank),
@@ -183,7 +186,6 @@
               x2 = xScale(x[1]),
               y1 = yScale(d.pfAvg),
               y2 = y1;
-          //console.log(x1, y1, x2, y2);
 
           canvas.append("line")
                 .attr("id", "avgLine")
@@ -200,10 +202,8 @@
           d3.selectAll("circle")
             .classed("hoveredOver", false);
 
-          //div.style("display", "none");
-          div.transition()
-            .duration(opacityTransition)
-            .style("opacity", 0.0);
+          div.style("display", "none");
+
 
           d3.select("#avgLine")
             .remove();
@@ -213,7 +213,12 @@
         
     </script>
 
-
-    <script src="d3.js"></script>
+    <p>
+      <ul>
+        <li>Make selected series come to front - test by bringing axes back front and 
+          checking that series moves in front of it when hovered over</li>
+        <li>Thing two</li>
+      </ul>
+    </p>
   </body>
 </html>
