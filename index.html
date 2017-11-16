@@ -12,9 +12,9 @@
       stroke-width: 1.5;
     }
 
-    .notHoveredOver {
-      opacity: 0.35;
-    }
+    /* .notHoveredOver {
+      opacity: 0.25;
+    } */
 
     div.tooltip {
       position: absolute;
@@ -27,7 +27,7 @@
       padding: 2px;
       border: 1.5px solid black;
       border-radius: 8px;
-      background: rgb(219, 219, 219);
+      background: rgb(226, 226, 226);
             
     }
 
@@ -39,6 +39,13 @@
     <script src="script/d3.js"></script>
     <script src="script/jquery-3.2.1.min.js"></script>
     <script>
+
+      d3.selection.prototype.moveToFront = function() {
+        return this.each(function(){
+          this.parentNode.appendChild(this);
+        });
+      };
+
       // Define variables
       var opacityTransition = 250;
 
@@ -132,11 +139,13 @@
         var yAxis = d3.axisLeft().scale(yScale);
         var xAxis = d3.axisBottom().scale(xScale);
        
-        // Create visualization        
+        // Create visualization   
+
+
         /// Axes
         canvas.append("g")
-        .attr("id", "gYAxis")
-        .call(yAxis);
+              .attr("id", "gYAxis")
+              .call(yAxis);
 
         canvas.append("g")
               .attr("id", "gXAxis")
@@ -144,7 +153,8 @@
               .call(xAxis);
 
         /// Scatterplot
-        canvas.selectAll("circle").data(data)
+        canvas.selectAll("circle")
+              .data(data, d => d)
               .enter()
               .append("circle")
               .attr("opacity", 0.35)
@@ -156,6 +166,7 @@
               .on("mouseover", mouseover)
               .on("mouseout", mouseout);
 
+
         /// Tooltip div
         var div = d3.select("body")
                     .append("div")
@@ -163,11 +174,12 @@
                     .style("width", "70px")
                     .style("height", "20px")
                     .style("display", "none");
-        
 
         // Define functions
         function mouseover(d) {
-          var hoveredYear = d.year;
+
+          var hoveredYear = d.year; 
+
           d3.selectAll("circle")
             .filter(p => p.year == hoveredYear)
             .classed("hoveredOver", true);
@@ -190,10 +202,15 @@
           canvas.append("line")
                 .attr("id", "avgLine")
                 .attr("stroke", colorScale(d.year))
+                .attr("stroke-width", 2)
                 .attr("x1", x1)
                 .attr("y1", y1)
                 .attr("x2", x2)
                 .attr("y2", y2);
+
+          var sel = d3.selectAll("circle")
+                      .filter(p => p.year == hoveredYear);
+          sel.moveToFront();
 
         }
 
@@ -203,7 +220,6 @@
             .classed("hoveredOver", false);
 
           div.style("display", "none");
-
 
           d3.select("#avgLine")
             .remove();
